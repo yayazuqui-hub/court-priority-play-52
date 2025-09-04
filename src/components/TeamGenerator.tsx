@@ -72,9 +72,19 @@ export function TeamGenerator({ bookings, onTeamsSaved, savedTeams = [] }: TeamG
       }
     });
 
-    // Calculate teams (assuming 6 players per team for volleyball)
+    // Calculate teams flexibly based on number of players
     const playersPerTeam = 6;
-    const numTeams = Math.floor(allPlayers.length / playersPerTeam);
+    let numTeams = Math.floor(allPlayers.length / playersPerTeam);
+    
+    // If we have fewer than 6 players, create 2 teams for a fair game
+    if (allPlayers.length < 6) {
+      numTeams = 2;
+    }
+    // If we have 6-11 players, still create 2 teams
+    else if (allPlayers.length < 12) {
+      numTeams = 2;
+    }
+    
     const teams: GeneratedTeam[] = [];
 
     for (let i = 0; i < numTeams; i++) {
@@ -105,7 +115,9 @@ export function TeamGenerator({ bookings, onTeamsSaved, savedTeams = [] }: TeamG
           // Distribute players across teams
           players.forEach((player, index) => {
             const teamIndex = index % numTeams;
-            if (teams[teamIndex].players.length < playersPerTeam) {
+            // For smaller groups, be more flexible with team sizes
+            const maxPlayersPerTeam = allPlayers.length < 12 ? Math.ceil(allPlayers.length / numTeams) + 2 : playersPerTeam;
+            if (teams[teamIndex].players.length < maxPlayersPerTeam) {
               teams[teamIndex].players.push(player);
             }
           });
@@ -124,7 +136,9 @@ export function TeamGenerator({ bookings, onTeamsSaved, savedTeams = [] }: TeamG
     );
 
     remainingPlayers.forEach(player => {
-      const teamWithSpace = teams.find(team => team.players.length < playersPerTeam);
+      // For smaller groups, be more flexible with remaining spots
+      const maxPlayersPerTeam = allPlayers.length < 12 ? Math.ceil(allPlayers.length / numTeams) + 2 : playersPerTeam;
+      const teamWithSpace = teams.find(team => team.players.length < maxPlayersPerTeam);
       if (teamWithSpace) {
         teamWithSpace.players.push(player);
       }
@@ -154,7 +168,8 @@ export function TeamGenerator({ bookings, onTeamsSaved, savedTeams = [] }: TeamG
     const toTeamIndex = (fromTeamIndex + 1) % updatedTeams.length;
 
     // Add player to destination team
-    if (updatedTeams[toTeamIndex].players.length < 6) {
+    const maxPlayersPerTeam = getAllPlayers().length < 12 ? Math.ceil(getAllPlayers().length / updatedTeams.length) + 2 : 6;
+    if (updatedTeams[toTeamIndex].players.length < maxPlayersPerTeam) {
       updatedTeams[toTeamIndex].players.push(player);
     } else {
       // If destination team is full, swap with the last player
@@ -218,7 +233,7 @@ export function TeamGenerator({ bookings, onTeamsSaved, savedTeams = [] }: TeamG
   };
 
   const totalPlayers = getAllPlayers().length;
-  const canGenerate = totalPlayers >= 12;
+  const canGenerate = totalPlayers >= 2;
   const hasGeneratedTeams = generatedTeams.length > 0;
 
   return (
@@ -234,20 +249,20 @@ export function TeamGenerator({ bookings, onTeamsSaved, savedTeams = [] }: TeamG
           <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
             <div className="text-center">
               <p className="font-medium text-muted-foreground">
-                Aguardando jogadores suficientes
+                Aguardando jogadores
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                {totalPlayers}/12 jogadores • {bookings.length} marcações ativas
+                {totalPlayers} jogadores • {bookings.length} marcações ativas
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                O gerador será habilitado com 12+ jogadores
+                Necessário pelo menos 2 jogadores para gerar times
               </p>
             </div>
           </div>
         ) : (
           <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
             <div>
-              <p className="font-medium">12+ jogadores detectados!</p>
+              <p className="font-medium">Jogadores detectados!</p>
               <p className="text-sm text-muted-foreground">
                 Total de jogadores: {totalPlayers}
               </p>
