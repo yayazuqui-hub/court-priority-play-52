@@ -3,20 +3,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+
+const DAYS_OF_WEEK = [
+  'Domingo',
+  'Segunda-feira', 
+  'Terça-feira',
+  'Quarta-feira',
+  'Quinta-feira',
+  'Sexta-feira',
+  'Sábado'
+];
 
 const GamesScheduleForm = () => {
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [address, setAddress] = useState("");
-  const [gameDate, setGameDate] = useState<Date>();
+  const [isRecurring, setIsRecurring] = useState(true);
+  const [dayOfWeek, setDayOfWeek] = useState(1); // Segunda-feira por padrão
   const [gameTime, setGameTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +36,7 @@ const GamesScheduleForm = () => {
     
     if (!user) return;
     
-    if (!title || !location || !gameDate || !gameTime) {
+    if (!title || !location || !gameTime) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios",
@@ -46,7 +54,9 @@ const GamesScheduleForm = () => {
           title,
           location,
           address: address || null,
-          game_date: format(gameDate, "yyyy-MM-dd"),
+          is_recurring: isRecurring,
+          day_of_week: isRecurring ? dayOfWeek : null,
+          game_date: null, // Para jogos recorrentes, não usamos data específica
           game_time: gameTime,
           end_time: endTime || null,
           created_by: user.id
@@ -56,21 +66,21 @@ const GamesScheduleForm = () => {
 
       toast({
         title: "Sucesso",
-        description: "Jogo agendado com sucesso!"
+        description: isRecurring ? "Jogo recorrente criado com sucesso!" : "Jogo agendado com sucesso!"
       });
 
       // Reset form
       setTitle("");
       setLocation("");
       setAddress("");
-      setGameDate(undefined);
+      setDayOfWeek(1);
       setGameTime("");
       setEndTime("");
     } catch (error) {
       console.error("Error creating game schedule:", error);
       toast({
         title: "Erro",
-        description: "Erro ao agendar jogo. Tente novamente.",
+        description: "Erro ao criar jogo. Tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -120,37 +130,33 @@ const GamesScheduleForm = () => {
             />
           </div>
 
+          <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/50">
+            <Switch
+              id="recurring"
+              checked={isRecurring}
+              onCheckedChange={setIsRecurring}
+            />
+            <Label htmlFor="recurring" className="text-sm">
+              Jogo semanal recorrente (recomendado)
+            </Label>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Data do Jogo *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !gameDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {gameDate ? format(gameDate, "dd/MM/yyyy") : "Selecionar data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={gameDate}
-                    onSelect={setGameDate}
-                    disabled={(date) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      return date < today;
-                    }}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label htmlFor="day">Dia da Semana *</Label>
+              <select
+                id="day"
+                value={dayOfWeek}
+                onChange={(e) => setDayOfWeek(parseInt(e.target.value))}
+                className="w-full p-2 border rounded-md bg-background"
+                required
+              >
+                {DAYS_OF_WEEK.map((day, index) => (
+                  <option key={index} value={index}>
+                    {day}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-2">
@@ -176,8 +182,15 @@ const GamesScheduleForm = () => {
             />
           </div>
 
+          <div className="text-sm text-muted-foreground bg-primary/10 p-3 rounded-lg">
+            <p className="font-medium">💡 Jogos Recorrentes:</p>
+            <p>• O jogo acontecerá toda semana no dia e horário escolhidos</p>
+            <p>• Ideal para estabelecer uma rotina fixa de jogos</p>
+            <p>• Ex: Todas as segundas às 19:00, quintas às 19:00, sábados às 16:00</p>
+          </div>
+
           <Button type="submit" disabled={isLoading} className="w-full">
-            {isLoading ? "Agendando..." : "Agendar Jogo"}
+            {isLoading ? "Criando..." : "Criar Jogo Recorrente"}
           </Button>
         </form>
       </CardContent>

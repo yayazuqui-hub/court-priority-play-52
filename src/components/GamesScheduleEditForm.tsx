@@ -3,22 +3,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Edit } from "lucide-react";
-import { format, parseISO } from "date-fns";
-import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import { Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+const DAYS_OF_WEEK = [
+  'Domingo',
+  'Segunda-feira', 
+  'Terça-feira',
+  'Quarta-feira',
+  'Quinta-feira',
+  'Sexta-feira',
+  'Sábado'
+];
 
 interface GameSchedule {
   id: string;
   title: string;
   location: string;
   address?: string;
-  game_date: string;
+  game_date?: string;
   game_time: string;
   end_time?: string;
+  day_of_week?: number;
+  is_recurring?: boolean;
   created_by: string;
   created_at: string;
 }
@@ -33,7 +42,8 @@ const GamesScheduleEditForm = ({ game, open, onOpenChange }: GamesScheduleEditFo
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [address, setAddress] = useState("");
-  const [gameDate, setGameDate] = useState<Date>();
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [dayOfWeek, setDayOfWeek] = useState(1);
   const [gameTime, setGameTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +54,8 @@ const GamesScheduleEditForm = ({ game, open, onOpenChange }: GamesScheduleEditFo
       setTitle(game.title);
       setLocation(game.location);
       setAddress(game.address || "");
-      setGameDate(parseISO(game.game_date));
+      setIsRecurring(game.is_recurring || false);
+      setDayOfWeek(game.day_of_week || 1);
       setGameTime(game.game_time);
       setEndTime(game.end_time || "");
     }
@@ -53,7 +64,7 @@ const GamesScheduleEditForm = ({ game, open, onOpenChange }: GamesScheduleEditFo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title || !location || !gameDate || !gameTime) {
+    if (!title || !location || !gameTime) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios",
@@ -71,7 +82,8 @@ const GamesScheduleEditForm = ({ game, open, onOpenChange }: GamesScheduleEditFo
           title,
           location,
           address: address || null,
-          game_date: format(gameDate, "yyyy-MM-dd"),
+          is_recurring: isRecurring,
+          day_of_week: isRecurring ? dayOfWeek : null,
           game_time: gameTime,
           end_time: endTime || null,
         })
@@ -140,37 +152,33 @@ const GamesScheduleEditForm = ({ game, open, onOpenChange }: GamesScheduleEditFo
             />
           </div>
 
+          <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/50">
+            <Switch
+              id="edit-recurring"
+              checked={isRecurring}
+              onCheckedChange={setIsRecurring}
+            />
+            <Label htmlFor="edit-recurring" className="text-sm">
+              Jogo semanal recorrente
+            </Label>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Data do Jogo *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !gameDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {gameDate ? format(gameDate, "dd/MM/yyyy") : "Selecionar data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={gameDate}
-                    onSelect={setGameDate}
-                    disabled={(date) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      return date < today;
-                    }}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label htmlFor="edit-day">Dia da Semana *</Label>
+              <select
+                id="edit-day"
+                value={dayOfWeek}
+                onChange={(e) => setDayOfWeek(parseInt(e.target.value))}
+                className="w-full p-2 border rounded-md bg-background"
+                required
+              >
+                {DAYS_OF_WEEK.map((day, index) => (
+                  <option key={index} value={index}>
+                    {day}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-2">

@@ -96,10 +96,12 @@ export type Database = {
           address: string | null
           created_at: string
           created_by: string
+          day_of_week: number | null
           end_time: string | null
-          game_date: string
+          game_date: string | null
           game_time: string
           id: string
+          is_recurring: boolean | null
           location: string
           title: string
           updated_at: string
@@ -108,10 +110,12 @@ export type Database = {
           address?: string | null
           created_at?: string
           created_by: string
+          day_of_week?: number | null
           end_time?: string | null
-          game_date: string
+          game_date?: string | null
           game_time: string
           id?: string
+          is_recurring?: boolean | null
           location: string
           title: string
           updated_at?: string
@@ -120,10 +124,12 @@ export type Database = {
           address?: string | null
           created_at?: string
           created_by?: string
+          day_of_week?: number | null
           end_time?: string | null
-          game_date?: string
+          game_date?: string | null
           game_time?: string
           id?: string
+          is_recurring?: boolean | null
           location?: string
           title?: string
           updated_at?: string
