@@ -75,12 +75,20 @@ Deno.serve(async (req) => {
     // Check if any schedule matches current time (within 1 minute tolerance)
     const matchingSchedules = schedules?.filter(schedule => {
       const scheduleTime = schedule.start_time.slice(0, 5) // Ensure HH:MM format
-      const timeDiff = Math.abs(
-        new Date(`1970-01-01T${currentTime}:00`).getTime() - 
-        new Date(`1970-01-01T${scheduleTime}:00`).getTime()
-      )
-      // Allow 1 minute tolerance (60000 ms)
-      return timeDiff <= 60000
+      console.log(`Comparing schedule time ${scheduleTime} with current time ${currentTime}`)
+      
+      // Parse times for comparison
+      const [currentHour, currentMinute] = currentTime.split(':').map(Number)
+      const [scheduleHour, scheduleMinute] = scheduleTime.split(':').map(Number)
+      
+      const currentTotalMinutes = currentHour * 60 + currentMinute
+      const scheduleTotalMinutes = scheduleHour * 60 + scheduleMinute
+      
+      const timeDiff = Math.abs(currentTotalMinutes - scheduleTotalMinutes)
+      console.log(`Time difference: ${timeDiff} minutes`)
+      
+      // Allow 1 minute tolerance
+      return timeDiff <= 1
     })
 
     if (!matchingSchedules || matchingSchedules.length === 0) {
