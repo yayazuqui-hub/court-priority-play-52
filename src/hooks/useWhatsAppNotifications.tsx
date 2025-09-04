@@ -74,9 +74,42 @@ export function useWhatsAppNotifications() {
     return Promise.allSettled(promises);
   }, [sendNotification]);
 
+  const sendGroupGameReminderNotification = useCallback(async (groupChatId: string, gameTitle: string, gameDate: string, gameTime: string, location: string, idInstance?: string, apiToken?: string) => {
+    const message = `🏐 *Lembrete de Jogo!*\n\n📅 *${gameTitle}*\n\n🗓️ **Data:** ${gameDate}\n⏰ **Horário:** ${gameTime}\n📍 **Local:** ${location}\n\nNão esqueça! Nos vemos lá! 🤝`;
+    
+    try {
+      const { data: result, error } = await supabase.functions.invoke('whatsapp-notifications', {
+        body: {
+          groupChatId,
+          message,
+          type: 'game_reminder',
+          idInstance,
+          apiToken
+        }
+      });
+
+      if (error) {
+        console.error('Error sending WhatsApp group notification:', error);
+        throw error;
+      }
+
+      console.log('WhatsApp group notification sent successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to send WhatsApp group notification:', error);
+      toast({
+        title: "Erro na notificação",
+        description: "Não foi possível enviar a notificação para o grupo WhatsApp",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }, [toast]);
+
   return {
     sendBookingNotification,
     sendSystemOpenNotification,
-    sendGameReminderNotification
+    sendGameReminderNotification,
+    sendGroupGameReminderNotification
   };
 }

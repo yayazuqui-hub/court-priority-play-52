@@ -3,19 +3,24 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useWhatsAppNotifications } from '@/hooks/useWhatsAppNotifications';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { MessageSquare, Send } from 'lucide-react';
+import { MessageSquare, Send, Settings } from 'lucide-react';
 
 export function GameReminders() {
   const [selectedGameId, setSelectedGameId] = useState('');
   const [games, setGames] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+  const [groupChatId, setGroupChatId] = useState('');
+  const [idInstance, setIdInstance] = useState('');
+  const [apiToken, setApiToken] = useState('');
   const { toast } = useToast();
-  const { sendGameReminderNotification } = useWhatsAppNotifications();
+  const { sendGameReminderNotification, sendGroupGameReminderNotification } = useWhatsAppNotifications();
 
   // Buscar jogos agendados
   const fetchGames = async () => {
@@ -56,53 +61,70 @@ export function GameReminders() {
         throw new Error('Jogo não encontrado');
       }
 
-      // Buscar todos os perfis com telefone
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('phone, name')
-        .not('phone', 'is', null);
-
-      if (profilesError) {
-        throw profilesError;
-      }
-
-      if (!profiles || profiles.length === 0) {
-        toast({
-          title: "Aviso",
-          description: "Nenhum usuário com telefone cadastrado encontrado",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const phones = profiles.map(p => p.phone).filter(Boolean);
-      
-      if (phones.length === 0) {
-        toast({
-          title: "Aviso",
-          description: "Nenhum telefone válido encontrado",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Formatar dados do jogo
       const gameDate = format(parseISO(selectedGame.game_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
       const gameTime = selectedGame.game_time;
 
-      // Enviar notificações
-      await sendGameReminderNotification(
-        phones,
-        selectedGame.title,
-        gameDate,
-        gameTime,
-        selectedGame.location
-      );
+      // Verificar se é para enviar para grupo ou contatos individuais
+      if (groupChatId.trim()) {
+        // Enviar para grupo específico
+        await sendGroupGameReminderNotification(
+          groupChatId.trim(),
+          selectedGame.title,
+          gameDate,
+          gameTime,
+          selectedGame.location,
+          idInstance.trim() || undefined,
+          apiToken.trim() || undefined
+        );
 
-      toast({
-        title: "Lembretes enviados!",
-        description: `${phones.length} lembretes WhatsApp enviados com sucesso`,
-      });
+        toast({
+          title: "Lembrete enviado!",
+          description: "Lembrete enviado para o grupo WhatsApp com sucesso",
+        });
+      } else {
+        // Enviar para contatos individuais (comportamento original)
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('phone, name')
+          .not('phone', 'is', null);
+
+        if (profilesError) {
+          throw profilesError;
+        }
+
+        if (!profiles || profiles.length === 0) {
+          toast({
+            title: "Aviso",
+            description: "Nenhum usuário com telefone cadastrado encontrado",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        const phones = profiles.map(p => p.phone).filter(Boolean);
+        
+        if (phones.length === 0) {
+          toast({
+            title: "Aviso",
+            description: "Nenhum telefone válido encontrado",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        await sendGameReminderNotification(
+          phones,
+          selectedGame.title,
+          gameDate,
+          gameTime,
+          selectedGame.location
+        );
+
+        toast({
+          title: "Lembretes enviados!",
+          description: `${phones.length} lembretes WhatsApp enviados com sucesso`,
+        });
+      }
 
     } catch (error) {
       console.error('Erro ao enviar lembretes:', error);
@@ -142,6 +164,55 @@ export function GameReminders() {
           </select>
         </div>
 
+        <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
+          <div className="flex items-center gap-2 mb-3">
+            <Settings className="h-4 w-4" />
+            <Label className="text-sm font-medium">Configurações WhatsApp</Label>
+          </div>
+          
+          <div>
+            <Label htmlFor="group-chat-id" className="text-sm">ID do Grupo WhatsApp (Opcional)</Label>
+            <Input
+              id="group-chat-id"
+              type="text"
+              value={groupChatId}
+              onChange={(e) => setGroupChatId(e.target.value)}
+              placeholder="Ex: 120363123456789012@g.us"
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Se preenchido, enviará apenas para este grupo. Caso contrário, enviará para todos os usuários individualmente.
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="id-instance" className="text-sm">ID Instance Green API (Opcional)</Label>
+            <Input
+              id="id-instance"
+              type="text"
+              value={idInstance}
+              onChange={(e) => setIdInstance(e.target.value)}
+              placeholder="Ex: 1101234567"
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="api-token" className="text-sm">API Token Green API (Opcional)</Label>
+            <Input
+              id="api-token"
+              type="password"
+              value={apiToken}
+              onChange={(e) => setApiToken(e.target.value)}
+              placeholder="Digite o token da API"
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Se não preenchidos, usará as credenciais padrão configuradas no sistema.
+            </p>
+          </div>
+        </div>
+
         <Button
           onClick={sendReminders}
           disabled={loading || !selectedGameId}
@@ -151,9 +222,10 @@ export function GameReminders() {
           {loading ? 'Enviando lembretes...' : 'Enviar Lembretes WhatsApp'}
         </Button>
 
-        <div className="text-sm text-muted-foreground">
-          <p>• Lembretes serão enviados para todos os usuários com telefone cadastrado</p>
-          <p>• Certifique-se de que os números estão no formato correto (ex: 5511999999999)</p>
+        <div className="text-sm text-muted-foreground space-y-1">
+          <p>• <strong>Grupo:</strong> Cole o ID do grupo WhatsApp para enviar apenas para ele</p>
+          <p>• <strong>Individual:</strong> Deixe vazio para enviar para todos os usuários cadastrados</p>
+          <p>• <strong>Formato telefone:</strong> 5511999999999 (código país + DDD + número)</p>
         </div>
       </CardContent>
     </Card>

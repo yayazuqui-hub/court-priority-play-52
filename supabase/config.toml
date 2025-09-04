@@ -1,1 +1,10 @@
 project_id = "xosczqqblnfdrwkjacxs"
+
+[functions.schedule-checker]
+verify_jwt = false
+
+[functions.queue-cleaner]
+verify_jwt = false
+
+[functions.whatsapp-notifications]
+verify_jwt = true

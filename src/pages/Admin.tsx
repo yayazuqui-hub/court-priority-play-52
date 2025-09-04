@@ -9,6 +9,7 @@ import { PriorityQueueDisplay } from '@/components/PriorityQueueDisplay';
 import { TeamGenerator } from '@/components/TeamGenerator';
 import { VolleyballCourt } from '@/components/VolleyballCourt';
 import GamesScheduleList from '@/components/GamesScheduleList';
+import { GameReminders } from '@/components/admin/GameReminders';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeData } from '@/hooks/useRealtimeData';
 import { supabase } from '@/integrations/supabase/client';
@@ -142,6 +143,8 @@ export default function Admin() {
               <GamesScheduleList games={gamesSchedule} isAdmin={true} />
             </CardContent>
           </Card>
+          
+          <GameReminders />
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <PriorityQueueDisplay priorityQueue={priorityQueue} systemState={systemState} />

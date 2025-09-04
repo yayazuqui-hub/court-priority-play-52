@@ -7,9 +7,12 @@ const corsHeaders = {
 };
 
 interface WhatsAppMessage {
-  phone: string;
+  phone?: string;
+  groupChatId?: string;
   message: string;
   type: 'booking' | 'system_open' | 'game_reminder';
+  idInstance?: string;
+  apiToken?: string;
 }
 
 const supabase = createClient(
@@ -24,10 +27,11 @@ serve(async (req) => {
   }
 
   try {
-    const { phone, message, type }: WhatsAppMessage = await req.json();
+    const { phone, groupChatId, message, type, idInstance, apiToken }: WhatsAppMessage = await req.json();
     
-    const greenApiIdInstance = Deno.env.get('GREEN_API_ID_INSTANCE');
-    const greenApiAccessToken = Deno.env.get('GREEN_API_ACCESS_TOKEN');
+    // Use provided credentials or fallback to environment variables
+    const greenApiIdInstance = idInstance || Deno.env.get('GREEN_API_ID_INSTANCE');
+    const greenApiAccessToken = apiToken || Deno.env.get('GREEN_API_ACCESS_TOKEN');
     
     if (!greenApiIdInstance || !greenApiAccessToken) {
       console.error('Green API credentials not configured');
@@ -37,11 +41,23 @@ serve(async (req) => {
       );
     }
 
-    // Clean phone number (remove any formatting)
-    const cleanPhone = phone.replace(/\D/g, '');
-    const formattedPhone = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@c.us`;
+    let chatId: string;
+    let targetDescription: string;
 
-    console.log(`Sending ${type} notification to ${formattedPhone}`);
+    if (groupChatId) {
+      // For groups, use the provided group chat ID
+      chatId = groupChatId;
+      targetDescription = `group ${groupChatId}`;
+    } else if (phone) {
+      // For individual phones, clean and format
+      const cleanPhone = phone.replace(/\D/g, '');
+      chatId = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@c.us`;
+      targetDescription = chatId;
+    } else {
+      throw new Error('Either phone or groupChatId must be provided');
+    }
+
+    console.log(`Sending ${type} notification to ${targetDescription}`);
 
     // Send message via Green API
     const greenApiUrl = `https://api.green-api.com/waInstance${greenApiIdInstance}/sendMessage/${greenApiAccessToken}`;
@@ -52,7 +68,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        chatId: formattedPhone,
+        chatId: chatId,
         message: message,
       }),
     });
@@ -70,7 +86,7 @@ serve(async (req) => {
     const { error: logError } = await supabase
       .from('notification_logs')
       .insert({
-        phone: formattedPhone,
+        phone: groupChatId ? `GROUP:${groupChatId}` : chatId,
         message,
         type,
         status: 'sent',
